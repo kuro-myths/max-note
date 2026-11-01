@@ -85,7 +85,7 @@ export default function Home() {
   function authenticate(e: React.FormEvent) {
     e.preventDefault();
     setAuthError("");
-    const accessKey = [49, 50, 51, 52, 53, 54, 55, 57].map(String.fromCharCode).join("");
+    const accessKey = [49, 50, 51, 52, 53, 54, 55, 57].map(n => String.fromCharCode(n)).join("");
     if (password !== accessKey) { setAuthError("Kunci salah. Silakan coba lagi."); return; }
     window.localStorage.setItem("max-note-unlocked", "true");
     setSession({ user: { id: "local-owner", email: "owner@max-note.local" } });
