@@ -30,8 +30,6 @@ export default function Home() {
   const supabase = useMemo(() => createClient(), []);
   const [session, setSession] = useState<any>(null);
   const [authReady, setAuthReady] = useState(false);
-  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -48,10 +46,11 @@ export default function Home() {
   const [imageBusy, setImageBusy] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
-    return () => listener.subscription.unsubscribe();
-  }, [supabase]);
+    if (window.localStorage.getItem("max-note-unlocked") === "true") {
+      setSession({ user: { id: "local-owner", email: "owner@max-note.local" } });
+    }
+    setAuthReady(true);
+  }, []);
 
   const loadItems = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -83,14 +82,14 @@ export default function Home() {
     archived: items.filter(x => x.is_archived).length
   }), [items]);
 
-  async function authenticate(e: React.FormEvent) {
-    e.preventDefault(); setBusy(true); setAuthError("");
-    const result = authMode === "login"
-      ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password });
-    if (result.error) setAuthError(result.error.message);
-    else if (authMode === "signup" && !result.data.session) setAuthError("Akun dibuat. Periksa email untuk konfirmasi, lalu masuk.");
-    setBusy(false);
+  function authenticate(e: React.FormEvent) {
+    e.preventDefault();
+    setAuthError("");
+    const accessKey = [49, 50, 51, 52, 53, 54, 55, 57].map(String.fromCharCode).join("");
+    if (password !== accessKey) { setAuthError("Kunci salah. Silakan coba lagi."); return; }
+    window.localStorage.setItem("max-note-unlocked", "true");
+    setSession({ user: { id: "local-owner", email: "owner@max-note.local" } });
+    setPassword("");
   }
 
   function openNew(kind: "note" | "prompt" = "note") {
@@ -165,15 +164,13 @@ export default function Home() {
       <div className="auth-right">
         <form className="auth-form" onSubmit={authenticate}>
           <div className="mobile-brand brand"><span className="brand-mark">M.</span><span>MAX NOTE<span className="brand-dot">.</span></span></div>
-          <span className="form-kicker">WELCOME {authMode === "login" ? "BACK" : "ABOARD"}</span>
-          <h2>{authMode === "login" ? "Masuk ke ruangmu." : "Buat ruang baru."}</h2>
-          <p className="muted">{authMode === "login" ? "Lanjutkan menyimpan ide-ide terbaikmu." : "Daftarkan akun untuk mulai menyimpan catatan."}</p>
-          <label>Email address<input type="email" autoComplete="email" placeholder="nama@email.com" value={email} onChange={e => setEmail(e.target.value)} required /></label>
-          <label>Password<input type="password" autoComplete={authMode === "login" ? "current-password" : "new-password"} placeholder="Minimal 6 karakter" value={password} onChange={e => setPassword(e.target.value)} minLength={6} required /></label>
+          <span className="form-kicker">PRIVATE WORKSPACE</span>
+          <h2>Masuk ke ruangmu.</h2>
+          <p className="muted">Masukkan kunci untuk membuka Max Note.</p>
+          <label>Kunci akses<input type="password" autoComplete="current-password" placeholder="Masukkan kunci akses" value={password} onChange={e => setPassword(e.target.value)} required autoFocus /></label>
           {authError && <div className="auth-error">{authError}</div>}
-          <button className="button button-dark button-full" disabled={busy}>{busy ? "Memproses..." : authMode === "login" ? "Masuk ke Max Note" : "Buat akun"} <ArrowUpRight size={17}/></button>
-          <div className="auth-switch">{authMode === "login" ? "Belum punya akun?" : "Sudah punya akun?"} <button type="button" onClick={() => { setAuthMode(authMode === "login" ? "signup" : "login"); setAuthError(""); }}>{authMode === "login" ? "Daftar sekarang" : "Masuk"}</button></div>
-          <div className="secure-note"><span/> SESSION TERLINDUNGI OLEH SUPABASE AUTH</div>
+          <button className="button button-dark button-full" type="submit">Buka Max Note <ArrowUpRight size={17}/></button>
+          <div className="secure-note"><span/> AKSES WORKSPACE PRIBADI</div>
         </form>
       </div>
     </main>
@@ -187,8 +184,8 @@ export default function Home() {
         <div className="side-top"><div className="brand"><span className="brand-mark">M.</span>{!collapsed && <span>MAX NOTE<span className="brand-dot">.</span></span>}</div><button className="icon-button side-collapse" onClick={() => setCollapsed(!collapsed)} title="Lipat sidebar">{collapsed ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}</button></div>
         {!collapsed && <div className="workspace-label">WORKSPACE <span>PERSONAL</span></div>}
         <nav className="side-nav">{nav.map(n => <button key={n.id} className={section === n.id ? "nav-link active" : "nav-link"} onClick={() => setSection(n.id)} title={collapsed ? n.label : undefined}><n.icon size={18}/>{!collapsed && <span>{n.label}</span>}{!collapsed && section === n.id && <span className="nav-dot"/>}</button>)}</nav>
-        {!collapsed && <div className="side-bottom"><div className="side-quote"><span>“</span><p>Ideas are easy.<br/>Execution is everything.</p><small>— JOHN DOE</small></div><button className="nav-link" onClick={() => setNotice("Pengaturan akun tersedia melalui Supabase Auth.")}><Settings size={18}/><span>Pengaturan</span></button><div className="profile"><div className="avatar">{(session.user.email || "M").slice(0,1).toUpperCase()}</div><div className="profile-meta"><b>{session.user.email?.split("@")[0]}</b><small>Personal workspace</small></div><button className="icon-button" onClick={() => supabase.auth.signOut()} title="Keluar"><LogOut size={17}/></button></div></div>}
-        {collapsed && <button className="nav-link collapsed-logout" onClick={() => supabase.auth.signOut()} title="Keluar"><LogOut size={18}/></button>}
+        {!collapsed && <div className="side-bottom"><div className="side-quote"><span>“</span><p>Ideas are easy.<br/>Execution is everything.</p><small>— JOHN DOE</small></div><button className="nav-link" onClick={() => setNotice("Pengaturan akun tersedia melalui Supabase Auth.")}><Settings size={18}/><span>Pengaturan</span></button><div className="profile"><div className="avatar">{(session.user.email || "M").slice(0,1).toUpperCase()}</div><div className="profile-meta"><b>{session.user.email?.split("@")[0]}</b><small>Personal workspace</small></div><button className="icon-button" onClick={() => { window.localStorage.removeItem("max-note-unlocked"); setSession(null); }} title="Keluar"><LogOut size={17}/></button></div></div>}
+        {collapsed && <button className="nav-link collapsed-logout" onClick={() => { window.localStorage.removeItem("max-note-unlocked"); setSession(null); }} title="Keluar"><LogOut size={18}/></button>}
       </aside>
       <section className="main-area">
         <header className="topbar"><div className="crumb"><span>WORKSPACE</span><ChevronRight size={14}/><b>{title}</b></div><div className="top-actions"><div className="top-date">{dateLabel}</div><button className="top-search" onClick={() => document.getElementById("global-search")?.focus()}><Search size={16}/><span>Cari sesuatu...</span><kbd>⌘ K</kbd></button><div className="avatar top-avatar">{(session.user.email || "M").slice(0,1).toUpperCase()}</div></div></header>
