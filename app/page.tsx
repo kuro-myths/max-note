@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   Archive, ArrowDownRight, ArrowUpRight, Bookmark, Check, ChevronDown, ChevronLeft,
   ChevronRight, CircleHelp, Command, FileImage, FileText, FolderOpen, Grid2X2,
@@ -204,28 +203,28 @@ export default function Home() {
           <div className="section-toolbar"><div><h2>{section === "home" ? "Baru-baru ini" : section === "gallery" ? "Galeri visual" : "Koleksi kamu"} <span>{visible.length.toString().padStart(2,"0")}</span></h2><p>{section === "home" ? "Lanjutkan dari tempat terakhir kamu berhenti." : "Pilih item untuk melihat dan mengelola isinya."}</p></div><div className="toolbar-right"><div className="search-field"><Search size={16}/><input id="global-search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Cari catatan atau prompt..."/></div>{section === "home" && <button className="text-button" onClick={() => setSection("all")}>Lihat semua <ArrowUpRight size={15}/></button>}</div></div>
           {loading ? <div className="empty-state">Memuat koleksi...</div> : visible.length === 0 ? <div className="empty-state"><div className="empty-icon"><FolderOpen size={24}/></div><h3>Belum ada yang tersimpan.</h3><p>Mulai dengan membuat catatan atau menyimpan prompt AI pertamamu.</p><button className="button button-dark" onClick={() => openNew(section === "prompts" ? "prompt" : "note")}><Plus size={16}/> Buat sekarang</button></div> : (
             <div className={section === "gallery" ? "notes-grid gallery-grid" : "notes-grid"}>
-              {visible.map((item, i) => <motion.article layout initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} transition={{delay:i*0.035}} className={"note-card " + (item.kind === "prompt" ? "prompt-card" : "")} key={item.id}>
+              {visible.map((item, i) => <article className={"note-card " + (item.kind === "prompt" ? "prompt-card" : "")} key={item.id}>
                 <div className="note-card-top"><span className="note-type">{item.kind === "prompt" ? <><Sparkles size={12}/> PROMPT</> : <><FileText size={12}/> CATATAN</>}</span><div className="note-card-actions"><button className={item.is_favorite ? "mini-action chosen" : "mini-action"} onClick={() => toggleField(item,"is_favorite")} title="Favorit"><Star size={15} fill={item.is_favorite ? "currentColor" : "none"}/></button><button className="mini-action" onClick={() => openEdit(item)} title="Edit"><Pencil size={15}/></button><button className="mini-action" onClick={() => toggleField(item,"is_archived")} title={item.is_archived ? "Pulihkan" : "Arsip"}>{item.is_archived ? <ArrowUpRight size={15}/> : <Archive size={15}/>}</button></div></div>
                 {item.image_path && <ImagePreview path={item.image_path} supabase={supabase}/>}
                 <button className="note-main" onClick={() => openEdit(item)}><span className="note-category">{item.category.toUpperCase()}</span><h3>{item.title}</h3><p>{item.content || "Tidak ada isi tambahan."}</p></button>
                 <div className="note-card-foot"><div className="tag-list">{item.tags.slice(0,2).map(t => <span key={t}>#{t}</span>)}</div><time>{new Date(item.updated_at).toLocaleDateString("id-ID",{day:"numeric",month:"short"})}</time></div>
                 {item.kind === "prompt" && <button className="copy-prompt" onClick={() => copyText(item.content)}><Copy size={14}/> Salin prompt</button>}
-              </motion.article>)}
+              </article>)}
             </div>
           )}
           <footer className="main-footer"><span>MAX NOTE © 2026</span><span>THINK CLEAR. KEEP CREATING.</span></footer>
         </div>
       </section>
-      <AnimatePresence>{editor && <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) setEditor(false); }}><motion.form initial={{opacity:0,y:16,scale:.98}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0,y:10}} className="editor-modal" onSubmit={saveItem}>
+      {editor && <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) setEditor(false); }}><form className="editor-modal" onSubmit={saveItem}>
         <div className="modal-head"><div><span className="form-kicker">{editing ? "EDIT COLLECTION" : "NEW ENTRY"}</span><h2>{editing ? "Perbarui item." : "Tangkap idemu."}</h2></div><button type="button" className="icon-button" onClick={() => setEditor(false)}><X size={20}/></button></div>
         <div className="kind-switch"><button type="button" className={form.kind === "note" ? "selected" : ""} onClick={() => setForm({...form,kind:"note"})}><FileText size={15}/> Catatan</button><button type="button" className={form.kind === "prompt" ? "selected" : ""} onClick={() => setForm({...form,kind:"prompt"})}><Sparkles size={15}/> Prompt AI</button></div>
         <label>Judul<input autoFocus value={form.title} onChange={e => setForm({...form,title:e.target.value})} placeholder="Beri judul yang mudah diingat..." required/></label>
         <label>Isi<textarea rows={7} value={form.content} onChange={e => setForm({...form,content:e.target.value})} placeholder={form.kind === "prompt" ? "Tulis prompt AI kamu di sini..." : "Mulai tulis ide kamu..."} /></label>
         <div className="form-row"><label>Kategori<input value={form.category} onChange={e => setForm({...form,category:e.target.value})} placeholder="Umum"/></label><label>Tag <small>(pisahkan koma)</small><input value={form.tags} onChange={e => setForm({...form,tags:e.target.value})} placeholder="coding, ai, ide"/></label></div>
         <div className="modal-foot"><button type="button" className="button button-light" onClick={() => setEditor(false)}>Batal</button><button className="button button-dark" disabled={saving}>{saving ? "Menyimpan..." : <><Check size={16}/> Simpan item</>}</button></div>
-      </motion.form></div>}</AnimatePresence>
+      </form></div>}
       <label className="upload-fab" title="Unggah gambar"><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={e => void uploadImage(e.target.files?.[0])} disabled={imageBusy}/>{imageBusy ? <span className="spinner"/> : <ImagePlus size={19}/>}</label>
-      <AnimatePresence>{notice && <motion.div initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} exit={{opacity:0,y:8}} className="toast">{notice}<button onClick={() => setNotice("")}><X size={14}/></button></motion.div>}</AnimatePresence>
+      {notice && <div className="toast">{notice}<button onClick={() => setNotice("")}><X size={14}/></button></div>}
     </main>
   );
 }
